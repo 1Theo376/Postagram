@@ -10,7 +10,7 @@ s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
 reckognition = boto3.client('rekognition')
 
-table = dynamodb.Table(os.getenv("table"))
+table = dynamodb.Table(os.getenv("DYNAMO_TABLE"))
 
 def lambda_handler(event, context):
     logger.info(json.dumps(event, indent=2))

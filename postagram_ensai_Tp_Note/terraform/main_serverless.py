@@ -52,8 +52,8 @@ class ServerlessStack(TerraformStack):
 
         code = TerraformAsset(
             self,
-            "lambda_code_asset",
-            path="./lambda",  # Dossier contenant lambda_function.py
+            "code",
+            path="./lambda",  
             type=AssetType.ARCHIVE
         )
 
@@ -63,7 +63,7 @@ class ServerlessStack(TerraformStack):
             runtime="python3.10",
             memory_size=128,
             timeout=60,
-            role=f"arn:aws:iam::{account_id}:role/LabRole",  # Assure-toi que ce rôle existe
+            role=f"arn:aws:iam::{account_id}:role/LabRole",  
             filename=code.path,
             handler="lambda_function.lambda_handler",
             source_code_hash=code.asset_hash,

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from constructs import Construct
-from cdktf import App, TerraformStack
+from cdktf import App, TerraformStack, TerraformOutput
 from cdktf_cdktf_provider_aws.provider import AwsProvider
 from cdktf_cdktf_provider_aws.default_vpc import DefaultVpc
 from cdktf_cdktf_provider_aws.default_subnet import DefaultSubnet
@@ -11,14 +11,13 @@ from cdktf_cdktf_provider_aws.lb_listener import LbListener, LbListenerDefaultAc
 from cdktf_cdktf_provider_aws.autoscaling_group import AutoscalingGroup
 from cdktf_cdktf_provider_aws.security_group import SecurityGroup, SecurityGroupIngress, SecurityGroupEgress
 from cdktf_cdktf_provider_aws.data_aws_caller_identity import DataAwsCallerIdentity
-from cdktf_cdktf_provider_aws.data_aws_ami import DataAwsAmi
 
 import base64
 
-# À personnaliser
-bucket = "bucketpostagramensai-xxxxxx"
+
+bucket = "bucketpostagramensai-8511447"
 dynamo_table = "Dynamo_table"
-your_repo = "https://github.com/HealerMikado/postagram_ensai"
+your_repo = "https://github.com/1Theo376/postagram_ensai_Tp_Note.git"
 
 user_data = base64.b64encode(f"""#!/bin/bash
 echo "userdata-start"        
@@ -38,27 +37,20 @@ echo "userdata-end"
 
 
 class ServerStack(TerraformStack):
-
     def __init__(self, scope: Construct, id: str):
         super().__init__(scope, id)
 
         account_id, security_group, subnets, default_vpc = self.infra_base()
 
-        ami = DataAwsAmi(self, "ubuntu_ami",
-                         most_recent=True,
-                         owners=["099720109477"],
-                         filter=[{
-                             "name": "name",
-                             "values": ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
-                         }]
-                         )
+        
+        image_id = "ami-0fc5d935ebf8bc3bc" 
 
         launch_template = LaunchTemplate(
             self, "launch_template",
-            image_id=ami.id,
+            image_id=image_id,
             instance_type="t3.micro",
             vpc_security_group_ids=[security_group.id],
-            key_name="",  # optionnel si tu veux SSH
+            key_name="postagram-key",
             user_data=user_data,
             tags={"Name": "TP-noté"},
             iam_instance_profile={"name": "LabInstanceProfile"}
@@ -100,19 +92,28 @@ class ServerStack(TerraformStack):
             target_group_arns=[target_group.arn]
         )
 
+        # Terraform output
+        TerraformOutput(self, "lb_dns", value=lb.dns_name)
+
     def infra_base(self):
+        """
+        Permet de définir une infra de base, vous ne devez pas y toucher !
+        """
         AwsProvider(self, "AWS", region="us-east-1")
         account_id = DataAwsCallerIdentity(self, "account_id").account_id
 
         default_vpc = DefaultVpc(self, "default_vpc")
-
+        # Les AZ de us-east-1 sont de la forme us-east-1x 
+        # avec x une lettre dans abcdef. Ne permet pas de déployer
+        # automatiquement ce code sur une autre région. Le code
+        # pour y arriver est vraiment compliqué.
         az_ids = [f"us-east-1{i}" for i in "abcdef"]
-        subnets = []
-        for i, az_id in enumerate(az_ids):
+        subnets= []
+        for i,az_id in enumerate(az_ids):
             subnets.append(DefaultSubnet(
-                self, f"default_sub{i}",
-                availability_zone=az_id
-            ).id)
+            self, f"default_sub{i}",
+            availability_zone=az_id
+        ).id)
 
         security_group = SecurityGroup(
             self, "sg-tp",
